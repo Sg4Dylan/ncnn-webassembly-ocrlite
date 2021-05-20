@@ -1,0 +1,92 @@
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>ncnn webassembly ocrlite</title>
+</head>
+
+<body>
+    <h3>ncnn webassembly ocrlite</h3>
+    <input type="file" id="input" accept="image/*">
+    <div>
+        <canvas id="canvas"></canvas>
+    </div>
+    <div>
+        <p>Results:</p>
+        <p id="results"></p>
+    </div>
+
+    <script type='text/javascript'>
+        var Module = {};
+        fetch('OcrLiteNcnnWasm.wasm')
+            .then(response => response.arrayBuffer())
+            .then(buffer => {
+                Module.wasmBinary = buffer;
+                var script = document.createElement('script');
+                script.src = 'OcrLiteNcnnWasm.js';
+                script.onload = function() {
+                    console.log('Emscripten boilerplate loaded.');
+                }
+                document.body.appendChild(script);
+            });
+
+        function ocrlite() {
+            var canvas = document.getElementById('canvas');
+            var ctx = canvas.getContext('2d');
+
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var data = imageData.data;
+
+            dst = _malloc(data.length);
+            HEAPU8.set(data, dst);
+            
+            (async () => {
+                resultarray = new Uint8Array(1000);
+                resultbuffer = _malloc(1000*Uint8Array.BYTES_PER_ELEMENT);
+                HEAPU8.set(resultarray, resultbuffer / Uint8Array.BYTES_PER_ELEMENT);
+                
+                _ocrlite_ncnn(dst, canvas.width, canvas.height, resultbuffer);
+                let qaqarray = HEAPU8.subarray(resultbuffer / Uint8Array.BYTES_PER_ELEMENT, resultbuffer / Uint8Array.BYTES_PER_ELEMENT + 1000);
+                let resultstring = new TextDecoder('utf8').decode(qaqarray).trim();
+                document.getElementById('results').innerText = resultstring;
+                _free(dst);
+            })();
+        }
+
+        document.getElementById('input').onchange = function(e) {
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                var img = new Image();
+                img.onload = function() {
+
+                    var canvas = document.getElementById('canvas');
+                    var ctx = canvas.getContext('2d');
+
+                    // scale down to 640x640
+                    var img_w = img.width;
+                    var img_h = img.height;
+
+                    if (img_w > img_h) {
+                        img_h = img_h * 640 / img_w;
+                        img_w = 640;
+                    }
+                    else {
+                        img_w = img_w * 640 / img_h;
+                        img_h = 640;
+                    }
+
+                    canvas.width = img_w;
+                    canvas.height = img_h;
+                    ctx.drawImage(img, 0, 0, img_w, img_h);
+
+                    ocrlite();
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        };
+    </script>
+
+</body>
+
+</html>
