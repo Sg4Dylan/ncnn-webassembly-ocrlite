@@ -1,0 +1,209 @@
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>OCRlite for ArkNights HR</title>
+</head>
+
+<body>
+    <h3>OCRlite for ArkNights HR</h3>
+    <input type="file" id="input" accept="image/*">
+    <div>
+        <canvas id="canvas"></canvas>
+    </div>
+    <div>
+        <p>HR Results:</p>
+        <p id="hr_results"></p>
+        <p>OCR Results:</p>
+        <p id="ocr_results"></p>
+    </div>
+
+    <script type='text/javascript'>
+        var Module = {};
+        fetch('OcrLiteNcnnWasm.wasm')
+            .then(response => response.arrayBuffer())
+            .then(buffer => {
+                Module.wasmBinary = buffer;
+                var script = document.createElement('script');
+                script.src = 'OcrLiteNcnnWasm.js';
+                script.onload = function() {
+                    console.log('Emscripten boilerplate loaded.');
+                }
+                document.body.appendChild(script);
+            });
+
+        function ocrlite() {
+            var canvas = document.getElementById('canvas');
+            var ctx = canvas.getContext('2d');
+
+            var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            var data = imageData.data;
+
+            dst = _malloc(data.length);
+            HEAPU8.set(data, dst);
+            
+            (async () => {
+                resultarray = new Uint8Array(1000);
+                resultbuffer = _malloc(1000*Uint8Array.BYTES_PER_ELEMENT);
+                HEAPU8.set(resultarray, resultbuffer / Uint8Array.BYTES_PER_ELEMENT);
+                
+                _ocrlite_ncnn(dst, canvas.width, canvas.height, resultbuffer);
+                let qaqarray = HEAPU8.subarray(resultbuffer / Uint8Array.BYTES_PER_ELEMENT, resultbuffer / Uint8Array.BYTES_PER_ELEMENT + 1000);
+                let resultstring = new TextDecoder('utf8').decode(qaqarray).trim();
+                document.getElementById('ocr_results').innerText = resultstring;
+                _free(dst);
+                checkTags() 
+            })();
+        }
+
+        function checkTags() {
+            let rawText = document.getElementById('ocr_results').innerText;
+            var resultText = "";
+            
+            // Ref: https://bbs.nga.cn/read.php?tid=26716384&rand=851
+            if (rawText.includes("生存")) {
+                if (rawText.includes("远程位") || rawText.includes("狙击干员")) {
+                    resultText += "杰西卡： 生存 + 远程位/狙击干员\n";
+                }
+                if (rawText.includes("重装干员") || rawText.includes("特种干员")) {
+                    resultText += "火神、狮蝎： 生存 + 重装干员/特种干员\n";
+                }
+                if (rawText.includes("防护")) {
+                    resultText += "火神： 生存 + 防护\n";
+                }
+            }
+            if (rawText.includes("防护")) {
+                if (rawText.includes("输出")) {
+                    resultText += "星极、雷蛇、火神： 输出 + 防护\n";
+                }
+                if (rawText.includes("近卫干员")) {
+                    resultText += "星极： 近卫干员 + 防护\n";
+                }
+            }
+            if (rawText.includes("输出")) {
+                if (rawText.includes("减速")) {
+                    resultText += "梅、霜叶、白雪、格雷伊： 输出 + 减速\n";
+                }
+                if (rawText.includes("重装干员")) {
+                    resultText += "雷蛇、火神： 输出 + 重装干员\n";
+                }
+                if (rawText.includes("辅助干员")) {
+                    resultText += "真理： 输出 + 辅助干员\n";
+                }
+                if (rawText.includes("特种干员")) {
+                    resultText += "崖心、狮蝎： 输出 + 特种干员\n";
+                }
+                if (rawText.includes("减速") && rawText.includes("术士干员")) {
+                    resultText += "夜魔： 减速 + 输出 + 术士干员\n";
+                }
+            }
+            if (rawText.includes("减速")) {
+                if (rawText.includes("群攻")) {
+                    resultText += "梅、霜叶、白雪、格雷伊： 输出 + 群攻\n";
+                }
+                if (rawText.includes("近战位")) {
+                    resultText += "霜叶： 减速 + 近战位\n";
+                }
+                if (rawText.includes("特种干员")) {
+                    resultText += "食铁兽： 减速 + 特种干员\n";
+                }
+                if (rawText.includes("狙击干员") || rawText.includes("近卫干员") || rawText.includes("术士干员")){
+                    resultText += "梅、霜叶、白雪、格雷伊： 减速 + 狙击干员/术士干员/近卫干员\n";
+                }
+            }
+            if (rawText.includes("治疗")) {
+                if (rawText.includes("输出") || rawText.includes("减速") || rawText.includes("术士干员")) {
+                    resultText += "夜魔： 治疗 + 输出/减速\n";
+                }
+                if (rawText.includes("回复费用") || rawText.includes("先锋干员")) {
+                    resultText += "桃金娘： 治疗 + 回复费用\n";
+                }
+            }
+            if (rawText.includes("位移")) {
+                if (rawText.includes("输出") || rawText.includes("减速")) {
+                    resultText += "崖心、食铁兽： 位移 + 输出/减速\n";
+                }
+                if (rawText.includes("防护") || rawText.includes("重装干员")) {
+                    resultText += "可颂： 位移 + 防护/重装干员\n";
+                }
+                resultText += "阿消、暗索： 位移\n";
+            }
+            if (rawText.includes("削弱")) {
+                if (rawText.includes("群攻")) {
+                    resultText += "陨星： 削弱 + 群攻\n";
+                }
+                if (rawText.includes("快活") || rawText.includes("近战位")) {
+                    resultText += "槐琥： 削弱 + 快活/近战位\n";
+                }
+                if (rawText.includes("辅助干员") || rawText.includes("特种干员")) {
+                    resultText += "初雪、槐琥： 削弱 + 辅助干员/特种干员\n";
+                }
+                resultText += "流星、夜烟： 削弱\n";
+            }
+            if (rawText.includes("支援")) {
+                if (rawText.includes("费用回复") || rawText.includes("先锋干员")) {
+                    resultText += "凛冬： 支援 + 费用回复/先锋干员\n";
+                }
+                resultText += "杜宾、清流： 支援\n";
+            }
+            if (rawText.includes("爆发")) {
+                resultText += "守林人： 爆发\n";
+            }
+            if (rawText.includes("控场")) {
+                resultText += "德克萨斯、梅尔、格劳克斯、红：控场\n";
+                if (rawText.includes("减速") || rawText.includes("快活")) {
+                    resultText += "格劳克斯、红：控场 + 减速/快活\n";
+                }
+            }
+            if (rawText.includes("召唤")) {
+                resultText += "梅尔： 召唤\n";
+            }
+            if (rawText.includes("快速复活")) {
+                resultText += "砾： 快速复活\n";
+            }
+            if (rawText.includes("特种干员")) {
+                resultText += "阿消、砾、暗索： 特种干员\n";
+            }
+            document.getElementById('hr_results').innerText = resultText;
+        }
+
+        document.getElementById('input').onchange = function(e) {
+            var reader = new FileReader();
+            reader.onload = function(event) {
+                var img = new Image();
+                img.onload = function() {
+
+                    var canvas = document.getElementById('canvas');
+                    var ctx = canvas.getContext('2d');
+
+                    // get width & height
+                    var img_w = img.width;
+                    var img_h = img.height;
+
+                    // Suit for ArcNights
+                    src_sy = img_h * 0.4855
+                    src_sx = img_w * 0.3096
+                    src_sW = img_w * 0.3450
+                    src_sH = img_h * 0.1965
+
+                    // !important: scale down to 640xN
+                    img_h = src_sH * 640 / src_sW;
+                    img_w = 640;
+                    canvas.width = img_w;
+                    canvas.height = img_h;
+
+                    // Crop Image
+                    // ctx.drawImage(img, 0, 0, img_w, img_h);
+                    ctx.drawImage(img, src_sx, src_sy, src_sW, src_sH, 0, 0, img_w, img_h);
+
+                    ocrlite();
+                }
+                img.src = event.target.result;
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        };
+    </script>
+
+</body>
+
+</html>

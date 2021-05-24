@@ -61,6 +61,10 @@ make
 
 ![Demo](https://i.imgur.com/r05UJbi.png)
 
+`demo/arknights.html`
+
+![Demo-ArkNights-HR](https://i.imgur.com/mKH0DLW.jpeg)
+
 ### References
 
  - [chineseocr_lite](https://github.com/DayBreak-u/chineseocr_lite)
