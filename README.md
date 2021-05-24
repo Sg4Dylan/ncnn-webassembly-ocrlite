@@ -63,7 +63,7 @@ make
 
 `demo/arknights.html`
 
-![Demo-ArkNights-HR](https://i.imgur.com/mKH0DLW.jpeg)
+![Demo-ArkNights-HR](https://i.imgur.com/Qh5ugyL.jpg)
 
 ### References
 
